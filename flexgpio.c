@@ -1,8 +1,8 @@
 /*
 
-  PCA9654E.c - driver code for RP2040 ARM processor
+  flexgpio.c - driver code
 
-  I2C I/O expander, PCA9654
+  I2C I/O expander, RP2040 based FlexiGPIO
 
   Part of grblHAL
 
@@ -25,10 +25,10 @@
 
 #include "driver.h"
 
-#if IOEXPAND_ENABLE == 2
+#if FLEXGPIO_ENABLE
 
 #include "grbl/settings.h"
-#include "ioexpand.h"
+#include "flexgpio.h"
 #include "i2c.h"
 
 #define IOEX_ADDRESS (0x48)
