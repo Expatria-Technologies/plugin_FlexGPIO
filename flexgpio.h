@@ -1,6 +1,6 @@
 /*
 
-  ioexpand.h - driver code for RP2040 ARM processor
+  flexgpio.h - driver code for RP2040 ARM processor
 
   I2C I/O expander
 
@@ -23,120 +23,131 @@
 
 */
 
-#ifndef _IOEXPAND_H_
-#define _IOEXPAND_H_
+#ifndef _FLEXGPIO_H_
+#define _FLEXGPIO_H_
 
 #include "driver.h"
 
+/*
 #define ioex_out(pin) ioex_outN(pin)
 #define ioex_outN(pin) io_expander.out ## pin
 #define ioex_in(pin) ioex_inN(pin)
 #define ioex_inN(pin) io_expander.in ## pin
+*/
 
-#if IOEXPAND_ENABLE == 2
+#if FLEXGPIO_ENABLE
 
-typedef union {
-    uint32_t mask;
+typedef struct {
+    uint32_t data_mask;   // Bitmask for actual pin states
+    uint32_t rw_mask;     // Bitmask for Read/Write configuration (0 = input, 1 = output)
+    uint32_t inv_mask;    // Bitmask for inversion configuration
+    
     struct {
-        uint32_t out0 :1,
-                out1 :1,
-                out2 :1,
-                out3 :1,
-                out4 :1,
-                out5 :1,
-                out6 :1,
-                out7 :1,
-                out8 :1,
-                out9 :1,
-                out10 :1,
-                out11 :1,
-                out12 :1,
-                out13 :1,
-                out14 :1,
-                out15 :1,
-                out16 :1,
-                out17 :1,
-                out18 :1,
-                out19 :1,
-                out20 :1,
-                out21 :1,
-                out22 :1,
-                out23 :1,
-                out24 :1,
-                out25 :1,
-                out26 :1,
-                out27 :1,
-                out28 :1,
-                out29 :1,
-                out30 :1, 
-                out31 :1;                                               
-    };
-    struct {
-        uint32_t in0 :1,
-                in1 :1,
-                in2 :1,
-                in3 :1,
-                in4 :1,
-                in5 :1,
-                in6 :1,
-                in7 :1,
-                in8 :1,
-                in9 :1,
-                in10 :1,
-                in11 :1,
-                in12 :1,
-                in13 :1,
-                in14 :1,
-                in15 :1,
-                in16 :1,
-                in17 :1,
-                in18 :1,
-                in19 :1,
-                in20 :1,
-                in21 :1,
-                in22 :1,
-                in23 :1,
-                in24 :1,
-                in25 :1,
-                in26 :1,
-                in27 :1,
-                in28 :1,
-                in29 :1,
-                in30 :1, 
-                in31 :1;   
-    };
-} ioexpand_t;
+        uint32_t data0 :1,
+                 data1 :1,
+                 data2 :1,
+                 data3 :1,
+                 data4 :1,
+                 data5 :1,
+                 data6 :1,
+                 data7 :1,
+                 data8 :1,
+                 data9 :1,
+                 data10 :1,
+                 data11 :1,
+                 data12 :1,
+                 data13 :1,
+                 data14 :1,
+                 data15 :1,
+                 data16 :1,
+                 data17 :1,
+                 data18 :1,
+                 data19 :1,
+                 data20 :1,
+                 data21 :1,
+                 data22 :1,
+                 data23 :1,
+                 data24 :1,
+                 data25 :1,
+                 data26 :1,
+                 data27 :1,
+                 data28 :1,
+                 data29 :1,
+                 data30 :1,
+                 data31 :1;
+    } data;
 
-#else
+    struct {
+        uint32_t rw0 :1,
+                 rw1 :1,
+                 rw2 :1,
+                 rw3 :1,
+                 rw4 :1,
+                 rw5 :1,
+                 rw6 :1,
+                 rw7 :1,
+                 rw8 :1,
+                 rw9 :1,
+                 rw10 :1,
+                 rw11 :1,
+                 rw12 :1,
+                 rw13 :1,
+                 rw14 :1,
+                 rw15 :1,
+                 rw16 :1,
+                 rw17 :1,
+                 rw18 :1,
+                 rw19 :1,
+                 rw20 :1,
+                 rw21 :1,
+                 rw22 :1,
+                 rw23 :1,
+                 rw24 :1,
+                 rw25 :1,
+                 rw26 :1,
+                 rw27 :1,
+                 rw28 :1,
+                 rw29 :1,
+                 rw30 :1,
+                 rw31 :1;
+    } rw;
 
-typedef union {
-    uint8_t mask;
     struct {
-        uint8_t out0 :1,
-                out1 :1,
-                out2 :1,
-                out3 :1,
-                out4 :1,
-                out5 :1,
-                out6 :1,
-                out7 :1;
-    };
-    struct {
-        uint8_t in0 :1,
-                in1 :1,
-                in2 :1,
-                in3 :1,
-                in4 :1,
-                in5 :1,
-                in6 :1,
-                in7 :1;
-    };
-} ioexpand_t;
+        uint32_t inv0 :1,
+                 inv1 :1,
+                 inv2 :1,
+                 inv3 :1,
+                 inv4 :1,
+                 inv5 :1,
+                 inv6 :1,
+                 inv7 :1,
+                 inv8 :1,
+                 inv9 :1,
+                 inv10 :1,
+                 inv11 :1,
+                 inv12 :1,
+                 inv13 :1,
+                 inv14 :1,
+                 inv15 :1,
+                 inv16 :1,
+                 inv17 :1,
+                 inv18 :1,
+                 inv19 :1,
+                 inv20 :1,
+                 inv21 :1,
+                 inv22 :1,
+                 inv23 :1,
+                 inv24 :1,
+                 inv25 :1,
+                 inv26 :1,
+                 inv27 :1,
+                 inv28 :1,
+                 inv29 :1,
+                 inv30 :1,
+                 inv31 :1;
+    } inv;
+
+} flexgpio_t;
+
 #endif
-
-extern ioexpand_t io_expander;
-void ioexpand_init (void);
-void ioexpand_out (ioexpand_t pins);
-ioexpand_t ioexpand_in (void);
-
 #endif
