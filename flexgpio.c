@@ -34,11 +34,9 @@
 
 #define FLEXGPIO_ADDRESS (0x48)
 
-static flexgpio_t pinvals;
-
-static uint32_t flexgpio_outpins = 0;
+uint32_t flexgpio_outpins = 0;
 static io_ports_data_t digital;
-static xbar_t aux_out[32] = {};
+xbar_t flexgpio_aux_out[NUM_FLEXGPIO_AUXOUT] = {};
 static enumerate_pins_ptr on_enumerate_pins;
 
 static void digital_out_ll (xbar_t *output, float value)
@@ -47,7 +45,7 @@ static void digital_out_ll (xbar_t *output, float value)
 
     bool on = value != 0.0f;
 
-    if(aux_out[output->id].mode.inverted)
+    if(flexgpio_aux_out[output->id].mode.inverted)
         on = !on;
 
     if(on)
@@ -64,6 +62,7 @@ static void digital_out_ll (xbar_t *output, float value)
         cmd[1] = (flexgpio_outpins >> 8) & 0xFF;  // Second byte
         cmd[2] = (flexgpio_outpins >> 16) & 0xFF; // Third byte
         cmd[3] = (flexgpio_outpins >> 24) & 0xFF; // Most significant byte
+        last_out = flexgpio_outpins;
 
         while (!i2c_send(FLEXGPIO_ADDRESS, cmd, 4, false)){
             hal.delay_ms(1, NULL);
@@ -75,8 +74,8 @@ static bool digital_out_cfg (xbar_t *output, gpio_out_config_t *config, bool per
 {
     if(output->id == 1) {
 
-        if(config->inverted != aux_out[output->id].mode.inverted) {
-            aux_out[output->id].mode.inverted = config->inverted;
+        if(config->inverted != flexgpio_aux_out[output->id].mode.inverted) {
+            flexgpio_aux_out[output->id].mode.inverted = config->inverted;
             digital_out_ll(output, (float)(!(flexgpio_outpins & (1 << output->pin)) ^ config->inverted));
         }
 
@@ -92,7 +91,7 @@ static bool digital_out_cfg (xbar_t *output, gpio_out_config_t *config, bool per
 static void digital_out (uint8_t port, bool on)
 {
     if(port < digital.out.n_ports)
-        digital_out_ll(&aux_out[port], (float)on);
+        digital_out_ll(&flexgpio_aux_out[port], (float)on);
 }
 
 static float digital_out_state (xbar_t *output)
@@ -108,7 +107,7 @@ static float digital_out_state (xbar_t *output)
 static bool set_pin_function (xbar_t *output, pin_function_t function)
 {
     if(output->id < digital.out.n_ports)
-        aux_out[output->id].function = function;
+        flexgpio_aux_out[output->id].function = function;
 
     return output->id < digital.out.n_ports;
 }
@@ -120,7 +119,7 @@ static xbar_t *get_pin_info (io_port_direction_t dir, uint8_t port)
     xbar_t *info = NULL;
 
     if(dir == Port_Output && port < digital.out.n_ports) {
-        memcpy(&pin, &aux_out[port], sizeof(xbar_t));
+        memcpy(&pin, &flexgpio_aux_out[port], sizeof(xbar_t));
         pin.get_value = digital_out_state;
         pin.set_value = digital_out_ll;
         pin.set_function = set_pin_function;
@@ -134,7 +133,7 @@ static xbar_t *get_pin_info (io_port_direction_t dir, uint8_t port)
 static void set_pin_description (io_port_direction_t dir, uint8_t port, const char *description)
 {
     if(dir == Port_Output && port < digital.out.n_ports)
-        aux_out[port].description = description;
+        flexgpio_aux_out[port].description = description;
 }
 
 static void onEnumeratePins (bool low_level, pin_info_ptr pin_info, void *data)
@@ -147,7 +146,7 @@ static void onEnumeratePins (bool low_level, pin_info_ptr pin_info, void *data)
 
     for(idx = 0; idx < digital.out.n_ports; idx ++) {
 
-        memcpy(&pin, &aux_out[idx], sizeof(xbar_t));
+        memcpy(&pin, &flexgpio_aux_out[idx], sizeof(xbar_t));
 
         if(!low_level)
             pin.port = "FLEXGPIO:";
@@ -197,20 +196,10 @@ void flexgpio_init (void)
         };
 
         hal.enumerate_pins(false, get_aux_max, &aux_out_base);
-
-        digital.out.n_ports = sizeof(aux_out) / sizeof(xbar_t);
-
-        for(idx = 0; idx < digital.out.n_ports; idx ++) {
-            aux_out[idx].id = idx;
-            aux_out[idx].pin = idx;
-            aux_out[idx].port = &flexgpio_outpins;
-            aux_out[idx].function = aux_out_base + idx;
-            aux_out[idx].group = PinGroup_AuxOutput;
-            aux_out[idx].cap.output = On;
-            aux_out[idx].cap.external = On;
-            aux_out[idx].cap.claimable = On;
-            aux_out[idx].mode.output = On;
-        }
+        
+        digital.out.n_ports = sizeof(flexgpio_aux_out) / sizeof(xbar_t);
+        
+        //pins are set up in board init as they are board specific
 
         ioports_add_digital(&dports);
 
