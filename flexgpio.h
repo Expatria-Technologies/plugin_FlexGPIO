@@ -54,6 +54,9 @@
 
 extern xbar_t flexgpio_aux_out[NUM_FLEXGPIO_AUXOUT];
 extern uint32_t flexgpio_outpins;
+extern uint32_t flexgpio_direction_mask;
+extern uint32_t flexgpio_polarity_mask;  //applies to inputs
+extern uint32_t flexgpio_enable_mask; //applies to inputs
 
 #endif
 #endif

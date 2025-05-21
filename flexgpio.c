@@ -35,6 +35,9 @@
 #define FLEXGPIO_ADDRESS (0x48)
 
 uint32_t flexgpio_outpins = 0;
+uint32_t flexgpio_direction_mask = 0;
+uint32_t flexgpio_polarity_mask = 0;  //applies to inputs
+uint32_t flexgpio_enable_mask = 0; //applies to inputs
 static io_ports_data_t digital;
 xbar_t flexgpio_aux_out[NUM_FLEXGPIO_AUXOUT] = {};
 static enumerate_pins_ptr on_enumerate_pins;
@@ -185,7 +188,7 @@ void flexgpio_init (void)
         //settings.probe.invert_toolsetter_input;
         
         uint_fast8_t idx;
-        uint8_t cmd[12];
+        uint8_t cmd[16];
         pin_function_t aux_out_base = Output_Aux0;
 
         io_digital_t dports = {
@@ -202,6 +205,31 @@ void flexgpio_init (void)
         //pins are set up in board init as they are board specific
 
         ioports_add_digital(&dports);
+
+        // Split 32-bit mask into individual bytes
+        cmd[0] = flexgpio_outpins & 0xFF;         // Least significant byte
+        cmd[1] = (flexgpio_outpins >> 8) & 0xFF;  // Second byte
+        cmd[2] = (flexgpio_outpins >> 16) & 0xFF; // Third byte
+        cmd[3] = (flexgpio_outpins >> 24) & 0xFF; // Most significant byte
+
+        cmd[4] = flexgpio_direction_mask & 0xFF;         // Least significant byte
+        cmd[5] = (flexgpio_direction_mask >> 8) & 0xFF;  // Second byte
+        cmd[6] = (flexgpio_direction_mask >> 16) & 0xFF; // Third byte
+        cmd[7] = (flexgpio_direction_mask >> 24) & 0xFF; // Most significant byte
+        
+        cmd[8] = flexgpio_polarity_mask & 0xFF;         // Least significant byte
+        cmd[9] = (flexgpio_polarity_mask >> 8) & 0xFF;  // Second byte
+        cmd[10] = (flexgpio_polarity_mask >> 16) & 0xFF; // Third byte
+        cmd[11] = (flexgpio_polarity_mask >> 24) & 0xFF; // Most significant byte
+        
+        cmd[12] = flexgpio_enable_mask & 0xFF;         // Least significant byte
+        cmd[13] = (flexgpio_enable_mask >> 8) & 0xFF;  // Second byte
+        cmd[14] = (flexgpio_enable_mask >> 16) & 0xFF; // Third byte
+        cmd[15] = (flexgpio_enable_mask >> 24) & 0xFF; // Most significant byte
+
+        while (!i2c_send(FLEXGPIO_ADDRESS, cmd, 16, false)){
+            hal.delay_ms(1, NULL);
+        }
 
         on_enumerate_pins = hal.enumerate_pins;
         hal.enumerate_pins = onEnumeratePins;
