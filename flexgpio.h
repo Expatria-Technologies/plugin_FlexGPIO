@@ -58,5 +58,8 @@ extern uint32_t flexgpio_direction_mask;
 extern uint32_t flexgpio_polarity_mask;  //applies to inputs
 extern uint32_t flexgpio_enable_mask; //applies to inputs
 
+void flexgpio_write_config(void);
+uint32_t flexgpio_read_inputs (void);
+
 #endif
 #endif
