@@ -203,7 +203,7 @@ void flexgpio_write_config(void){
     cmd[14] = (flexgpio_enable_mask >> 16) & 0xFF; // Third byte
     cmd[15] = (flexgpio_enable_mask >> 24) & 0xFF; // Most significant byte
 
-    while (!i2c_send(FLEXGPIO_ADDRESS, cmd, 16, false)){
+    while (!i2c_send(FLEXGPIO_ADDRESS, cmd, 16, 1)){
         hal.delay_ms(1, NULL);
     }
 }
