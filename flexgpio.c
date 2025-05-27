@@ -212,6 +212,9 @@ void flexgpio_init (void)
 {
     if(i2c_start().ok && i2c_probe(FLEXGPIO_ADDRESS)) {
         
+        //pins are set up in board init as they are board specific
+        flexgpio_write_config();
+        
         pin_function_t aux_out_base = Output_Aux0;
 
         io_digital_t dports = {
@@ -225,8 +228,6 @@ void flexgpio_init (void)
         
         digital.out.n_ports = sizeof(flexgpio_aux_out) / sizeof(xbar_t);
         
-        //pins are set up in board init as they are board specific
-        flexgpio_write_config();
 
         ioports_add_digital(&dports);
 
