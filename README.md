@@ -11,10 +11,14 @@ https://github.com/Expatria-Technologies/FlexGPIO
 
 The FlexiGPIO expander communicates over I2C and exposes:
 
-- **Up to 8 digital inputs** — tool sensor, probe, and per-axis motor fault signals
-- **Up to 16 digital outputs** — auxiliary outputs (24 V and 5 V), spindle enable/direction, mist, coolant, and per-axis motor disable signals
+- **Up to 8 digital inputs:**
+  - tool sensor, probe, and per-axis motor fault signals
+- **Up to 16 digital outputs:**
+  - auxiliary outputs (24 V and 5 V), spindle enable/direction, mist, coolant, and per-axis motor disable signals
 
 The exact number of inputs and outputs scales automatically with `N_ABC_MOTORS` (the number of A/B/C axes configured in your grblHAL build).
+
+All expander pins appear in grblHAL's IO port system exactly like native GPIO, making them available to spindle, coolant, probing, and auxiliary I/O subsystems without any special handling.
 
 ### Input Pin Map
 
@@ -54,36 +58,42 @@ The exact number of inputs and outputs scales automatically with `N_ABC_MOTORS` 
 
 ---
 
-## I2C Protocol
+## Installation
 
-The plugin communicates with the expander using raw I2C byte sequences.
+### Standard drivers (STM32, iMXRT, SAM3X8E, etc.)
 
-**Output write (4 bytes):** The current 32-bit output state is sent as four bytes, least-significant byte first.
+1. Download or clone this repository and copy `flexgpio.c` and `flexgpio.h` into the same folder as your driver's `driver.c`.
 
-**Configuration write (8 bytes):** Sent at startup and whenever IRQ masks change:
-- Bytes 0–3: current output state (as above)
-- Bytes 4–5: MCU IRQ mask (16-bit, LSB first) — pins whose edge events are routed to the host MCU
-- Bytes 6–7: Probe IRQ mask (16-bit, LSB first) — pins configured for probe interrupt-all mode
-
-**Input read (4 bytes):** Four bytes are read back from the expander and assembled into a 32-bit pin state word (LSB first).
-
-If any I2C transaction fails, the plugin raises `Alarm_ExpanderException` to halt motion safely.
-
----
-
-## Configuration
-
-### Enable the plugin
-
-In your board map or `CMakeLists.txt`, define:
+2. Add the following to your `my_machine.h`:
 
 ```c
 #define FLEXGPIO_ENABLE 1
 ```
 
+3. Ensure your driver calls `flexgpio_init()` on startup, typically inside an `#if FLEXGPIO_ENABLE` guard in `driver.c`.
+
+### CMake-based drivers (RP2040, RP2350)
+
+Add this repository as a subdirectory and link against the `flexgpio` target:
+
+```cmake
+add_subdirectory(path/to/plugin_FlexGPIO)
+target_link_libraries(your_target flexgpio)
+```
+
+Then enable the plugin in your board configuration:
+
+```c
+#define FLEXGPIO_ENABLE 1
+```
+
+---
+
+## Configuration
+
 ### I2C address
 
-The default I2C address is `0x48`. To override it, define before including the plugin:
+The default I2C address is `0x48`. To override it, define the following before the plugin is compiled:
 
 ```c
 #define FLEXGPIO_ADDRESS 0x3C  // example alternative address
@@ -91,7 +101,7 @@ The default I2C address is `0x48`. To override it, define before including the p
 
 ### IRQ pin (optional but recommended)
 
-To receive asynchronous input change notifications rather than polling, define the MCU GPIO port number connected to the expander's interrupt output:
+To receive asynchronous input-change notifications rather than polling, define the host MCU port number connected to the expander's interrupt output:
 
 ```c
 #define FLEXGPIO_IRQ_PIN  <port_number>
@@ -101,46 +111,11 @@ When defined, the plugin claims that port as an input and registers a change-int
 
 ---
 
-## Building
-
-The plugin is provided as a CMake interface library. Add it to your grblHAL build by including the directory and linking against the `flexgpio` target:
-
-```cmake
-add_subdirectory(path/to/plugin_FlexGPIO)
-target_link_libraries(your_target flexgpio)
-```
-
-The `CMakeLists.txt` in this repository handles the source and include paths automatically.
-
----
-
-## Integration
-
-Call `flexgpio_init()` from your driver's initialisation code (typically `driver.c` or equivalent, gated on `FLEXGPIO_ENABLE`):
-
-```c
-#if FLEXGPIO_ENABLE
-#include "flexgpio.h"
-...
-flexgpio_init();
-#endif
-```
-
-`flexgpio_init()` will:
-1. Optionally claim the MCU IRQ pin.
-2. Probe the I2C bus for the expander at the configured address.
-3. Register all digital inputs and outputs with grblHAL's `ioports` subsystem, making them available to the rest of the system (spindle, coolant, probing, aux I/O, etc.) exactly like native GPIO pins.
-4. Send an initial configuration packet and read back the starting input states.
-
-Pins appear in grblHAL pin enumeration with the port name `FLEXGPIO:`.
-
----
-
 ## Input Capabilities
 
 All expander inputs support:
 
-- Edge interrupt detection (rising, falling, or change) via the MCU IRQ pin
+- Edge interrupt detection (rising, falling, or change) via the IRQ pin
 - Inverted polarity
 - Pull-up mode
 - Claimable by grblHAL subsystems (probe, motor fault, aux)
@@ -149,7 +124,7 @@ All expander inputs support:
 
 ## Error Handling
 
-If the I2C expander is unreachable at startup, the plugin silently skips registration (no ports are added). If a communication error occurs during operation, `Alarm_ExpanderException` is raised, which halts the machine and requires a reset — the same behaviour as other grblHAL I/O errors.
+If the I2C expander is not found at startup, the plugin skips registration silently — no ports are added and no error is reported. If a communication error occurs during operation, `Alarm_ExpanderException` is raised, halting the machine and requiring a reset.
 
 ---
 
@@ -161,7 +136,7 @@ Current plugin version: **0.03**
 
 ## License
 
-This plugin is released under the [GNU General Public License v3](LICENSE), consistent with the grblHAL project.
+Released under the [GNU General Public License v3](LICENSE), consistent with the grblHAL project.
 
 Copyright (c) 2018–2026 Terje Io  
 Copyright (c) 2025 Expatria Technologies Inc.  
