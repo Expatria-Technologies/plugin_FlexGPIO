@@ -92,12 +92,13 @@ static const uint8_t flexgpio_out_map[] = {
 
 static struct {
     pin_irq_mode_t mode;
+    uint8_t user_port;
     ioport_interrupt_callback_ptr callback;
 } irq[FLEXGPIO_N_DIN] = {};
 
 static xbar_t aux_in[FLEXGPIO_N_DIN] = {};
 static xbar_t aux_out[FLEXGPIO_N_DOUT] = {};
-static io_ports_data_t digital;
+static io_ports_data_t digital = { .external = true };
 static uint32_t d_out = 0, d_in = 0;
 static volatile uint32_t event_bits = 0;
 
@@ -277,6 +278,7 @@ static bool register_interrupt_handler (uint8_t port, uint8_t user_port, pin_irq
             probe_irq_mask |= 1 << input->pin; // Set probe IRQ bit
         }
         else if((ok = (irq_mode & input->cap.irq_mode) == irq_mode && interrupt_callback != NULL)) {
+            irq[input->id].user_port = user_port;
             irq[input->id].callback = interrupt_callback;
             irq[input->id].mode = input->mode.irq_mode = irq_mode;
         }
@@ -319,14 +321,14 @@ static xbar_t *get_pin_info (io_port_direction_t dir, uint8_t port)
 
     if(dir == Port_Input && port < digital.in.n_ports) {
         memcpy(&pin, &aux_in[port], sizeof(xbar_t));
-        //pin.pin += digital.in.n_start;
+        pin.pin += digital.in.pin_base;
         pin.get_value = digital_in_state;
         pin.set_function = set_pin_function;
         pin.config = digital_in_cfg;
         info = &pin;
     } else if(dir == Port_Output && port < digital.out.n_ports) {
         memcpy(&pin, &aux_out[port], sizeof(xbar_t));
-        //pin.pin += digital.out.n_start;
+        pin.pin += digital.out.pin_base;
         pin.get_value = digital_out_state;
         pin.set_value = digital_out_ll;
         pin.set_function = set_pin_function;
@@ -384,7 +386,7 @@ static void i2c_get_inputs (void *data)
                 *(uint32_t *)input->port &= ~bit;
 
             if((event & bit) && irq[input->id].callback)
-                    irq[input->id].callback(digital.in.n_start + input->id, !!(*(uint32_t *)input->port & bit));
+                irq[input->id].callback(irq[input->id].user_port, !!(*(uint32_t *)input->port & bit));
 
             event_bits |= event; // Should this be reset somewhere? Is it okay for pending events to persist indefinitely.
         }
@@ -472,7 +474,7 @@ static void onReportOptions (bool newopt)
     on_report_options(newopt);
 
     if(!newopt)
-        report_plugin("FLEXGPIO", "0.03");
+        report_plugin("FLEXGPIO", "0.04");
 }
 
 void flexgpio_init (void)
